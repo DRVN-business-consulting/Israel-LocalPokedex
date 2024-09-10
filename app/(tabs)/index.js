@@ -49,6 +49,9 @@ export default function AllPokemon() {
   const [newName, setNewName] = useState("");
   const [selectedPokemon, setSelectedPokemon] = useState(null);
   const router = useRouter();
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const [newPokemonName, setNewPokemonName] = useState("");
+  const [newPokemonType, setNewPokemonType] = useState("");
 
   const downloadImage = async (uri, fileName) => {
     const fileUri = FileSystem.documentDirectory + fileName;
@@ -258,16 +261,52 @@ export default function AllPokemon() {
     }
   };
 
-  const handleCreate = (pokemon) => {
-    // Logic for creating a new Pokémon entry
-    // console.log("Create Pokémon:", pokemon);
-  };
-
   const handleEdit = (pokemon) => {
     setSelectedPokemon(pokemon);
     setNewName(pokemon.name.english);
     setModalVisible(true);
   };
+
+  const handleCreatePokemon = async () => {
+    if (!newPokemonName || !newPokemonType) {
+      Alert.alert("Error", "Please provide both name and type.");
+      return;
+    }
+
+    const newPokemon = {
+      id: Date.now(), // Simple ID generation
+      name: { english: newPokemonName },
+      type: [newPokemonType],
+      image: {
+        hires:
+          "https://e.snmc.io/i/600/s/195b8661cd841d3b82348d5c5ba5dc22/12253011/chuu-strawberry-rush-Cover-Art.jpg", // Placeholder image URL
+        local: null,
+      },
+    };
+
+    try {
+      // Download the image and update the local path
+      const fileName = `${newPokemon.id}.png`;
+      const fileUri = await downloadImage(newPokemon.image.hires, fileName);
+      newPokemon.image.local = fileUri;
+
+      // Save the Pokémon and update AsyncStorage
+      await processPokemon(newPokemon);
+
+      // Update the Pokémon data in state
+      setPokemonData((prevData) => {
+        const updatedData = [...prevData, newPokemon];
+        return updatedData.sort((a, b) => b.id - a.id); // Sort by largest ID first
+      });
+
+      setIsCreateModalVisible(false); // Close the modal
+      Alert.alert("Success", "Pokémon created successfully!");
+    } catch (error) {
+      console.error("Error creating Pokémon:", error);
+      Alert.alert("Error", "Failed to create Pokémon.");
+    }
+  };
+
   const handleDelete = async (id) => {
     try {
       // Check if id is an object, if so, extract the ID
@@ -448,7 +487,7 @@ export default function AllPokemon() {
         </View>
         <TouchableOpacity
           style={[styles.button, styles.buttonCreate]}
-          onPress={handleCreate}
+          onPress={() => setIsCreateModalVisible(true)}
         >
           <View style={styles.buttonCreate}>
             <Ionicons name="create" size={24} color="black" />
@@ -473,6 +512,68 @@ export default function AllPokemon() {
             />
             <Button title="Save" onPress={handleSave} />
             <Button title="Cancel" onPress={handleClose} />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isCreateModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsCreateModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Create New Pokémon</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Pokémon Name"
+              value={newPokemonName}
+              onChangeText={setNewPokemonName}
+            />
+            <RNPickerSelect
+              onValueChange={(value) => setNewPokemonType(value)}
+              items={[
+                { label: "Normal", value: "Normal" },
+                { label: "Fire", value: "Fire" },
+                { label: "Water", value: "Water" },
+                { label: "Grass", value: "Grass" },
+                { label: "Electric", value: "Electric" },
+                { label: "Ice", value: "Ice" },
+                { label: "Fighting", value: "Fighting" },
+                { label: "Poison", value: "Poison" },
+                { label: "Ground", value: "Ground" },
+                { label: "Flying", value: "Flying" },
+                { label: "Psychic", value: "Psychic" },
+                { label: "Bug", value: "Bug" },
+                { label: "Rock", value: "Rock" },
+                { label: "Ghost", value: "Ghost" },
+                { label: "Dark", value: "Dark" },
+                { label: "Dragon", value: "Dragon" },
+                { label: "Steel", value: "Steel" },
+                { label: "Fairy", value: "Fairy" },
+              ]}
+              style={{
+                inputIOS: {
+                  marginLeft: 10,
+                  fontSize: 24,
+                  fontWeight: "bold",
+                  color: theme.text,
+                },
+                inputAndroid: {
+                  marginLeft: 10,
+                  fontSize: 24,
+                  fontWeight: "bold",
+                  color: theme.text,
+                },
+              }}
+              placeholder={{ label: "Select Type", value: null }}
+            />
+            <Button title="Create" onPress={handleCreatePokemon} />
+            <Button
+              title="Cancel"
+              onPress={() => setIsCreateModalVisible(false)}
+            />
           </View>
         </View>
       </Modal>

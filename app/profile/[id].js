@@ -121,6 +121,8 @@ export default function ViewProfile() {
     type = [],
     profile: profileDetails = {},
     description = "No description available",
+    base = {},
+    evolution = {},
   } = profile;
 
   const textColor = typeColors[type[0]] || typeColors.Unknown; // Use the first type for color
@@ -186,6 +188,30 @@ export default function ViewProfile() {
             <Text style={[styles.text, { color: textColor }]}>
               <Text style={styles.boldText}>Species: </Text>
               {profileDetails.species || "Unknown"}
+            </Text>
+            <Text style={[styles.text, { color: textColor }]}>
+              <Text style={styles.boldText}>Height: </Text>
+              {profileDetails.height || "Unknown"}
+            </Text>
+            <Text style={[styles.text, { color: textColor }]}>
+              <Text style={styles.boldText}>Weight: </Text>
+              {profileDetails.weight || "Unknown"}
+            </Text>
+            <Text style={[styles.text, { color: textColor }]}>
+              <Text style={styles.boldText}>Description: </Text>
+              {description}
+            </Text>
+            <Text style={[styles.text, { color: textColor }]}>
+              <Text style={styles.boldText}>Base Stats: </Text>
+              {Object.entries(base)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(", ")}
+            </Text>
+            <Text style={[styles.text, { color: textColor }]}>
+              <Text style={styles.boldText}>Evolution: </Text>
+              {evolution.prev
+                ? `Previous: ${evolution.prev.join(", ")}`
+                : "No evolution data"}
             </Text>
           </>
         )}

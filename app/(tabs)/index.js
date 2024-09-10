@@ -108,6 +108,7 @@ export default function AllPokemon() {
       throw new Error(`Error copying image: ${error.message}`);
     }
   };
+
   const downloadImage = async (uri, fileName) => {
     if (!uri || !fileName) {
       throw new Error("Invalid URI or file name");
@@ -308,11 +309,9 @@ export default function AllPokemon() {
       if (storedPokemon !== null) {
         const pokemonDetails = JSON.parse(storedPokemon);
 
-        // Check if the image file still exists
         const imageExists = await checkImageExists(pokemonDetails.image.local);
 
         if (!imageExists) {
-          // Handle missing image (e.g., re-download or use placeholder)
           const fileName = `${pokemonDetails.id}.png`;
           pokemonDetails.image.local = await downloadImage(
             pokemonDetails.image.hires,
@@ -336,7 +335,6 @@ export default function AllPokemon() {
   };
 
   const handleSelectImage = async () => {
-    // Ask for permission to access the media library
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
@@ -347,7 +345,6 @@ export default function AllPokemon() {
       return;
     }
 
-    // Launch image picker
     const pickerResult = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1,
@@ -375,11 +372,9 @@ export default function AllPokemon() {
     };
 
     try {
-      // Check the validity of the selected image URI and file name
       console.log("Creating Pokémon with image URI:", selectedImage);
       console.log("Creating Pokémon with file name:", `${newPokemon.id}.png`);
 
-      // Handle selected image
       if (selectedImage) {
         const fileName = `${newPokemon.id}.png`;
         const fileUri = await copyImage(selectedImage, fileName); // Use copyImage instead
@@ -613,14 +608,7 @@ export default function AllPokemon() {
               value={newPokemonName}
               onChangeText={setNewPokemonName}
             />
-            <View>
-              {selectedImage && (
-                <Image
-                  source={{ uri: selectedImage }}
-                  style={{ width: 100, height: 100 }}
-                />
-              )}
-            </View>
+
             <RNPickerSelect
               onValueChange={(value) => setNewPokemonType(value)}
               items={[
@@ -666,7 +654,7 @@ export default function AllPokemon() {
                 style={{ width: 100, height: 100, marginVertical: 10 }}
               />
             )}
-            <Button title="Create" onPress={handleCreatePokemon} />
+            <Button title="Create Pokemon" onPress={handleCreatePokemon} />
             <Button
               title="Cancel"
               onPress={() => setIsCreateModalVisible(false)}

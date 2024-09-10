@@ -77,8 +77,6 @@ export default function AllPokemon() {
     setLoading(true);
 
     try {
-      // console.log("Fetching Pokémon data for page:", page);
-
       // 1. First, try to use updated data from AsyncStorage
       const storedPokemons = await Promise.all(
         Array.from({ length: limit }, (_, i) =>
@@ -89,8 +87,6 @@ export default function AllPokemon() {
       const updatedData = storedPokemons
         .map((item) => (item ? JSON.parse(item) : null))
         .filter((item) => item !== null);
-
-      // console.log("Data fetched from AsyncStorage:", updatedData);
 
       if (updatedData.length > 0) {
         // If there is updated data in AsyncStorage, use it
@@ -121,8 +117,6 @@ export default function AllPokemon() {
 
         const data = await response.json();
 
-        // console.log("Data fetched from API:", data);
-
         if (Array.isArray(data)) {
           if (data.length < limit) {
             setHasMore(false);
@@ -139,11 +133,6 @@ export default function AllPokemon() {
               return storedPokemon ? JSON.parse(storedPokemon) : pokemon;
             })
           );
-
-          // console.log(
-          //   "Updated Pokémon data after adding API data:",
-          //   updatedDataFromAPI
-          // );
 
           setPokemonData((prevData) => {
             const uniqueData = [
@@ -170,17 +159,11 @@ export default function AllPokemon() {
     deactivateKeepAwake();
   }, []);
 
-  // useEffect(() => {
-  //   if (isFocused) {
-  //     fetchAllPokemon(page);
-  //   }
-  // }, [isFocused, page]);
-
   useFocusEffect(
     useCallback(() => {
-      console.log("Screen is focused"); // Log to confirm focus
+      console.log("Screen is focused");
       fetchAllPokemon(page);
-    }, [page]) // Dependency array ensures it runs when `page` changes
+    }, [page])
   );
 
   useEffect(() => {

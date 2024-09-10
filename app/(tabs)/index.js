@@ -32,6 +32,7 @@ import { deactivateKeepAwake } from "expo-keep-awake";
 const POKEDEX_BG_IMAGE = require("../../assets/Images/pokedex_bg.png");
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import * as ImagePicker from "expo-image-picker";
 
 export default function AllPokemon() {
   const { pokemonData, setPokemonData, favorites, toggleFavorite } =
@@ -52,18 +53,85 @@ export default function AllPokemon() {
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [newPokemonName, setNewPokemonName] = useState("");
   const [newPokemonType, setNewPokemonType] = useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
 
-  const downloadImage = async (uri, fileName) => {
-    const fileUri = FileSystem.documentDirectory + fileName;
+  const pickImage = async () => {
     try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        console.log("Picked image URI:", uri);
+        setSelectedImage(uri); // Set the picked image URI
+
+        // Example filename and usage
+        const fileName = "selected-image.png"; // Use a suitable filename
+        await copyImage(uri, fileName);
+      } else {
+        console.log("Image picking was canceled or no image was selected.");
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+    }
+  };
+  const copyImage = async (uri, fileName) => {
+    if (!uri || !fileName) {
+      throw new Error("Invalid URI or file name");
+    }
+
+    // Construct the local file URI
+    const fileUri = FileSystem.documentDirectory + fileName;
+    console.log("File URI:", fileUri);
+
+    try {
+      // Check if file already exists
       const fileInfo = await FileSystem.getInfoAsync(fileUri);
       if (!fileInfo.exists) {
-        await FileSystem.downloadAsync(uri, fileUri);
+        console.log("File does not exist. Starting copy...");
+        // Copy the image to the local file system
+        await FileSystem.copyAsync({
+          from: uri,
+          to: fileUri,
+        });
+        console.log("Copy successful:", fileUri);
+      } else {
+        console.log("File already exists:", fileUri);
+      }
+      return fileUri;
+    } catch (error) {
+      console.error("Error copying image:", error);
+      throw new Error(`Error copying image: ${error.message}`);
+    }
+  };
+  const downloadImage = async (uri, fileName) => {
+    if (!uri || !fileName) {
+      throw new Error("Invalid URI or file name");
+    }
+
+    // Construct the local file URI
+    const fileUri = FileSystem.documentDirectory + fileName;
+    console.log("File URI:", fileUri);
+
+    try {
+      // Check if file already exists
+      const fileInfo = await FileSystem.getInfoAsync(fileUri);
+      if (!fileInfo.exists) {
+        console.log("File does not exist. Starting download...");
+        // Download the image
+        const downloadResult = await FileSystem.downloadAsync(uri, fileUri);
+        console.log("Download successful:", downloadResult.uri);
+      } else {
+        console.log("File already exists:", fileUri);
       }
       return fileUri;
     } catch (error) {
       console.error("Error downloading image:", error);
-      return uri;
+      throw new Error(`Error downloading image: ${error.message}`);
     }
   };
 
@@ -267,6 +335,29 @@ export default function AllPokemon() {
     setModalVisible(true);
   };
 
+  const handleSelectImage = async () => {
+    // Ask for permission to access the media library
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        "Permission Required",
+        "You need to grant permission to access the media library."
+      );
+      return;
+    }
+
+    // Launch image picker
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 1,
+    });
+
+    if (!pickerResult.cancelled) {
+      setSelectedImage(pickerResult.uri);
+    }
+  };
+
   const handleCreatePokemon = async () => {
     if (!newPokemonName || !newPokemonType) {
       Alert.alert("Error", "Please provide both name and type.");
@@ -274,21 +365,26 @@ export default function AllPokemon() {
     }
 
     const newPokemon = {
-      id: Date.now(), // Simple ID generation
+      id: Date.now(),
       name: { english: newPokemonName },
       type: [newPokemonType],
       image: {
-        hires:
-          "https://e.snmc.io/i/600/s/195b8661cd841d3b82348d5c5ba5dc22/12253011/chuu-strawberry-rush-Cover-Art.jpg", // Placeholder image URL
+        hires: selectedImage, // Use the picked image URI
         local: null,
       },
     };
 
     try {
-      // Download the image and update the local path
-      const fileName = `${newPokemon.id}.png`;
-      const fileUri = await downloadImage(newPokemon.image.hires, fileName);
-      newPokemon.image.local = fileUri;
+      // Check the validity of the selected image URI and file name
+      console.log("Creating Pokémon with image URI:", selectedImage);
+      console.log("Creating Pokémon with file name:", `${newPokemon.id}.png`);
+
+      // Handle selected image
+      if (selectedImage) {
+        const fileName = `${newPokemon.id}.png`;
+        const fileUri = await copyImage(selectedImage, fileName); // Use copyImage instead
+        newPokemon.image.local = fileUri;
+      }
 
       // Save the Pokémon and update AsyncStorage
       await processPokemon(newPokemon);
@@ -296,7 +392,7 @@ export default function AllPokemon() {
       // Update the Pokémon data in state
       setPokemonData((prevData) => {
         const updatedData = [...prevData, newPokemon];
-        return updatedData.sort((a, b) => b.id - a.id); // Sort by largest ID first
+        return updatedData.sort((a, b) => b.id - a.id);
       });
 
       setIsCreateModalVisible(false); // Close the modal
@@ -304,20 +400,6 @@ export default function AllPokemon() {
     } catch (error) {
       console.error("Error creating Pokémon:", error);
       Alert.alert("Error", "Failed to create Pokémon.");
-    }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      // Check if id is an object, if so, extract the ID
-      const pokemonId = typeof id === "object" ? id.id : id;
-
-      await AsyncStorage.removeItem(`pokemon_${pokemonId}`);
-      setPokemonData((prevData) =>
-        prevData.filter((pokemon) => pokemon.id !== pokemonId)
-      );
-    } catch (error) {
-      console.error("Error deleting Pokémon from AsyncStorage:", error);
     }
   };
 
@@ -511,7 +593,7 @@ export default function AllPokemon() {
               onChangeText={setNewName}
             />
             <Button title="Save" onPress={handleSave} />
-            <Button title="Cancel" onPress={handleClose} />
+            <Button title="Cancel" onPress={() => setModalVisible(false)} />
           </View>
         </View>
       </Modal>
@@ -531,6 +613,14 @@ export default function AllPokemon() {
               value={newPokemonName}
               onChangeText={setNewPokemonName}
             />
+            <View>
+              {selectedImage && (
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={{ width: 100, height: 100 }}
+                />
+              )}
+            </View>
             <RNPickerSelect
               onValueChange={(value) => setNewPokemonType(value)}
               items={[
@@ -569,6 +659,13 @@ export default function AllPokemon() {
               }}
               placeholder={{ label: "Select Type", value: null }}
             />
+            <Button title="Select Image" onPress={pickImage} />
+            {selectedImage && (
+              <Image
+                source={{ uri: selectedImage }}
+                style={{ width: 100, height: 100, marginVertical: 10 }}
+              />
+            )}
             <Button title="Create" onPress={handleCreatePokemon} />
             <Button
               title="Cancel"

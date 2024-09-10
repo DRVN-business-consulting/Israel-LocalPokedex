@@ -187,11 +187,6 @@ export default function ViewProfile() {
               <Text style={styles.boldText}>Species: </Text>
               {profileDetails.species || "Unknown"}
             </Text>
-            <Text style={[styles.text, { color: textColor }]}>
-              <Text style={styles.boldText}>Description: </Text>
-              {description}
-            </Text>
-            <Button title="Edit Profile" onPress={() => setIsEditing(true)} />
           </>
         )}
       </ScrollView>

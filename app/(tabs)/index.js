@@ -15,6 +15,11 @@ import {
   Image,
   TouchableOpacity,
   SafeAreaView,
+  Modal,
+  TextInput,
+  Button,
+  Alert,
+  handleClose,
 } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 import { useRouter } from "expo-router";
@@ -27,10 +32,10 @@ import { deactivateKeepAwake } from "expo-keep-awake";
 const POKEDEX_BG_IMAGE = require("../../assets/Images/pokedex_bg.png");
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AntDesign from "@expo/vector-icons/AntDesign";
+
 export default function AllPokemon() {
   const { pokemonData, setPokemonData, favorites, toggleFavorite } =
     usePokemon();
-  const isFocused = useIsFocused();
 
   const { theme } = useContext(ThemeContext);
   const [loading, setLoading] = useState(true);
@@ -40,6 +45,9 @@ export default function AllPokemon() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [pokemonDetails, setPokemonDetails] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [selectedPokemon, setSelectedPokemon] = useState(null);
   const router = useRouter();
 
   const downloadImage = async (uri, fileName) => {
@@ -198,6 +206,31 @@ export default function AllPokemon() {
     }
   };
 
+  const handleSave = async () => {
+    if (!selectedPokemon) return;
+
+    try {
+      const updatedPokemon = {
+        ...selectedPokemon,
+        name: { ...selectedPokemon.name, english: newName },
+      };
+      await AsyncStorage.setItem(
+        `pokemon_${selectedPokemon.id}`,
+        JSON.stringify(updatedPokemon)
+      );
+      setPokemonData((prevData) =>
+        prevData.map((item) =>
+          item.id === selectedPokemon.id ? updatedPokemon : item
+        )
+      );
+      setModalVisible(false);
+      Alert.alert("Success", "Pokémon name updated successfully!");
+    } catch (error) {
+      console.error("Error saving Pokémon:", error);
+      Alert.alert("Error", "Failed to save Pokémon.");
+    }
+  };
+
   const handlePokemonPress = async (id) => {
     try {
       const storedPokemon = await AsyncStorage.getItem(`pokemon_${id}`);
@@ -231,11 +264,10 @@ export default function AllPokemon() {
   };
 
   const handleEdit = (pokemon) => {
-    // Logic for editing the Pokémon entry
-    router.push(`/profile/${pokemon.id}`);
-    // console.log("Edit Pokémon:", pokemon);
+    setSelectedPokemon(pokemon);
+    setNewName(pokemon.name.english);
+    setModalVisible(true);
   };
-
   const handleDelete = async (id) => {
     try {
       // Check if id is an object, if so, extract the ID
@@ -245,7 +277,6 @@ export default function AllPokemon() {
       setPokemonData((prevData) =>
         prevData.filter((pokemon) => pokemon.id !== pokemonId)
       );
-      // console.log(`Deleted Pokémon with ID: ${pokemonId}`);
     } catch (error) {
       console.error("Error deleting Pokémon from AsyncStorage:", error);
     }
@@ -424,6 +455,27 @@ export default function AllPokemon() {
           </View>
         </TouchableOpacity>
       </ImageBackground>
+
+      {/* Modal for editing Pokémon */}
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleClose}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Pokémon Name</Text>
+            <TextInput
+              style={styles.textInput}
+              value={newName}
+              onChangeText={setNewName}
+            />
+            <Button title="Save" onPress={handleSave} />
+            <Button title="Cancel" onPress={handleClose} />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -526,6 +578,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 25,
     textAlign: "center",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 8,
+    width: "80%",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  textInput: {
+    width: "100%",
     padding: 10,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 4,
+    marginBottom: 10,
   },
 });
